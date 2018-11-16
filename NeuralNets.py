@@ -134,6 +134,18 @@ class NeuralNet:
 		self.updateWeights(l_step)
 	
 	
+	# Calculate error on 'sample_l' with current weights
+	def errorCalculate(self, sample_l):
+		# TODO
+		pass
+		
+	''' Stochastic gradient decent with training sample list 
+		'tain_l', the gradient decent step length 'l_step', 
+		the maximum epoch in training.
+	'''
+	def SDG(self, train_l, l_step, n_epoch):
+		# TODO
+		pass
 	
 a = NeuralNet([3,30,2])
 
