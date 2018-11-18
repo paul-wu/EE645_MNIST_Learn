@@ -181,8 +181,8 @@ class NeuralNet:
 			train = random.sample(train_l,1)[0]
 			self.gradientDecent(train, l_step)
 
-'''
-a = NeuralNet([3,10,10,10,2])
+
+a = NeuralNet([3,10,10,2])
 
 sample_l = [
 [[0,0,0],[0,0]],
@@ -196,10 +196,10 @@ sample_l = [
 ]
 
 
-a.SDG(sample_l, 0.001, 1000000)
+a.SDG(sample_l, 1, 10000)
 
 #b = a.evaluate([1,1,1])
 #a.printLayers()
-print(a.errorCalculate(sample_l, a.naiveBinary)) # achieves the training error to be 0.125
+print(a.errorCalculate(sample_l, a.naiveBinary)) # achieves the training error to be 0.0
 
-'''
+
