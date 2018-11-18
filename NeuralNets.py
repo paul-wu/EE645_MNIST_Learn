@@ -50,7 +50,7 @@ class NeuralNet:
 			res += a[i]['value']*b[i]
 		return res
 	
-	# Evaluate the network with 'input' and output the binarilized output
+	# Evaluate the network with 'input' and output actual output
 	def evaluate(self, input):
 		n = len(input)
 		if len(self.nets[0]) != n:
@@ -63,23 +63,19 @@ class NeuralNet:
 			current_layer = self.nets[j]
 			for k in current_layer:
 				k['value'] = self.activation(self.dotProduct(k['father'], k['weights']), 1)
-		# Binarilize the output
+		# Output the actual value, no binarilization 
 		output = []
 		for t in self.nets[self._layer-1]:
-			if t['value'] > 0.5:
-				output.append(1)
-			else:
-				output.append(0)
+			output.append(t['value'])
 		return output
 	
 	# Print values in each layer nicely
 	def printLayers(self):
 		for i in self.nets:
-			v, u = [],[]
+			v = []
 			for j in i:
 				v.append(j['value'])
-				u.append(j['weights'])
-			print(v, u)
+			print(v)
 			
 	# Allow to change weights manually
 	def modifyWeights(self, i,j, k, newWeight):
@@ -143,11 +139,34 @@ class NeuralNet:
 				return False
 		return True
 
-	# Calculate error on 'sample_l' with current weights
-	def errorCalculate(self, sample_l):
+	# simple binarilization
+	def naiveBinary(self, a):
+		for i in range(len(a)):
+			if a[i] > 0.5:
+				a[i] = 1
+			else:
+				a[i] = 0
+		return a
+	
+	# binarilize the maximum value to be 1 and others to be zeros
+	def max2one(self, a):
+		index = 0
+		for i in range(len(a)):
+			if a[i] > a[index]:
+				index = i
+		for j in range(len(a)):
+			if j != index:
+				a[j] = 0
+		a[index] = 1
+		return a
+
+	''' Calculate error on 'sample_l' with current weights,
+		define you own function 'trim' to binarilize the output
+	'''
+	def errorCalculate(self, sample_l, trim):
 		err = 0
 		for i in sample_l:
-			b = self.evaluate(i[0])
+			b = trim(self.evaluate(i[0]))
 			print(b)
 			if not self.isMatch(b,i[1]):
 				err += 1
@@ -161,7 +180,8 @@ class NeuralNet:
 		for i in range(n_epoch):
 			train = random.sample(train_l,1)[0]
 			self.gradientDecent(train, l_step)
-	
+
+'''
 a = NeuralNet([3,10,10,10,2])
 
 sample_l = [
@@ -180,4 +200,6 @@ a.SDG(sample_l, 0.001, 1000000)
 
 #b = a.evaluate([1,1,1])
 #a.printLayers()
-print(a.errorCalculate(sample_l))
+print(a.errorCalculate(sample_l, a.naiveBinary)) # achieves the training error to be 0.125
+
+'''
