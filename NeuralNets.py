@@ -5,6 +5,10 @@ Implementation of neural network
 
 import math
 import random
+from mnist import MNIST
+from sklearn import preprocessing
+import numpy as np
+
 
 
 class NeuralNet:
@@ -28,16 +32,22 @@ class NeuralNet:
 	# Build a new neural
 	def newNeural(self, Father):
 		data = {}
-		data.update({'weights':[random.uniform(-1,1) for i in range(len(Father))]})
+		data.update({'weights':[random.uniform(-0.5,0.5) for i in range(len(Father))]})
 		data.update({'derivative':[0]*len(Father)})
 		data.update({'father': Father})
 		data.update({'value': 0})
 		return data
 		
 	# We use sigmoid function as activation function
-	def activation(self, x, a):
-		x = math.exp(x*a)
-		return x/(x+1)
+	def activationSigmoid(self, x, a):
+		#x = math.exp(x*a)
+		if x*a < 0: #if x is a large negitive, we exceed floating point range
+			return(1- 1/(1+math.exp(x*a)))
+		else:
+			return(1/(1+math.exp(-x*a)))
+
+
+		#return x/(x+1)
 	
 	# 'a' is the pointor to previous layer, 'b' is the weights
 	def dotProduct(self, a, b):
@@ -62,7 +72,7 @@ class NeuralNet:
 		for j in range(1,self._layer):
 			current_layer = self.nets[j]
 			for k in current_layer:
-				k['value'] = self.activation(self.dotProduct(k['father'], k['weights']), 1)
+				k['value'] = self.activationSigmoid(self.dotProduct(k['father'], k['weights']), 1)
 		# Output the actual value, no binarilization 
 		output = []
 		for t in self.nets[self._layer-1]:
@@ -99,7 +109,7 @@ class NeuralNet:
 			for n in range(len(layer)):
 				neural = layer[n]
 				pre_neural = self.nets[index+1]
-				const, temp = (1-neural['value']), 0
+				const, temp = (1-neural['value'])*(neural['value']), 0
 				for pre_n in pre_neural:
 					temp += pre_n['weights'][n]*pre_n['derivative'][n]
 				const *= temp
@@ -141,12 +151,15 @@ class NeuralNet:
 
 	# simple binarilization
 	def naiveBinary(self, a):
+		print('len a ',a)
 		for i in range(len(a)):
+			print(a[i])
 			if a[i] > 0.5:
 				a[i] = 1
 			else:
 				a[i] = 0
 		return a
+
 	
 	# binarilize the maximum value to be 1 and others to be zeros
 	def max2one(self, a):
@@ -164,13 +177,14 @@ class NeuralNet:
 		define you own function 'trim' to binarilize the output
 	'''
 	def errorCalculate(self, sample_l, trim):
+		print('Calc error...')
 		err = 0
 		for i in sample_l:
 			b = trim(self.evaluate(i[0]))
-			print(b)
+			#print(b, i[1], self.isMatch(b,i[1]))
 			if not self.isMatch(b,i[1]):
 				err += 1
-		return err / len(sample_l)
+		return float(err) / len(sample_l)
 		
 	''' Stochastic gradient decent with training sample list 
 		'tain_l', the gradient decent step length 'l_step', 
@@ -178,13 +192,61 @@ class NeuralNet:
 	'''
 	def SDG(self, train_l, l_step, n_epoch):
 		for i in range(n_epoch):
-			train = random.sample(train_l,1)[0]
-			self.gradientDecent(train, l_step)
+			random.shuffle(train_l)
+			#train = random.sample(train_l,1)[0]
+			j = 0
+			for train in train_l:
+				if j%500==0:
+					print('Running epoch ', i,j)
+				j += 1
+				self.gradientDecent(train, l_step)
 
+	def SDG1(self, train_l, l_step, err):
+		ac_err, epoch = 1, 0
+		while(ac_err > err):
+			random.shuffle(train_l)
+			j = 0
+			for train in train_l:
+				if j%500==0:
+					print('Running epoch ', epoch, j)
+				j += 1
+				self.gradientDecent(train, l_step)
+			test = random.sample(train_l, 100)
+			ac_err = self.errorCalculate(test, self.max2one)
+			print(ac_err, epoch)
+			epoch+=1
 
-a = NeuralNet([3,10,10,2])
+#%%
 
-sample_l = [
+mndataSet = './Dataset'
+print('Loading and processing Data')
+mndata = MNIST()
+#mndata.gz =True
+mndata = MNIST(mndataSet)
+print('Loading training')
+images,labels = mndata.load_training()
+#images_test, labels_test = mndata.load_testing()
+
+#Transform the labels into from single digit to a 10-arry binary vector aka One-hot-matrix
+labels = np.transpose(np.reshape(labels,(-1,len(labels))))
+encoder = preprocessing.OneHotEncoder()
+encoder.fit(labels)
+oneHotLabels = encoder.transform(labels).toarray()
+
+#%%
+samples = []
+n_training=labels.shape[0]
+for i in range(0,labels.shape[0]):
+	samples.append([images[i],oneHotLabels[i]])
+
+#%%
+inputSize = len(images[0])
+outputSize = len(oneHotLabels[0])
+a = NeuralNet([inputSize,30,outputSize])
+#%%
+#a = NeuralNet([3,30,2])
+
+sample_1 = [
 [[0,0,0],[0,0]],
 [[0,0,1],[0,1]],
 [[0,1,0],[0,1]],
@@ -194,12 +256,22 @@ sample_l = [
 [[1,0,1],[1,0]],
 [[1,1,1],[1,1]]
 ]
+#a.SDG(sample_l, 1, 10000)
 
+#%%
 
-a.SDG(sample_l, 1, 10000)
+st, epo = 0.05, 10
 
+a.SDG1(samples[:len(samples)/4], 0.005, 0.3)
+
+#a.SDG(samples[:len(samples)], st, epo)
+
+#%%
 #b = a.evaluate([1,1,1])
 #a.printLayers()
-print(a.errorCalculate(sample_l, a.naiveBinary)) # achieves the training error to be 0.0
+#print(a.errorCalculate(sample_l, a.naiveBinary)) # achieves the training error to be 0.0
+print(a.errorCalculate(samples[len(samples)/4:len(samples)/2], a.max2one)) # achieves the training error to be 0.0
+#print(a.errorCalculate(samples, a.naiveBinary)) # achieves the training error to be 0.0
+
 
 
